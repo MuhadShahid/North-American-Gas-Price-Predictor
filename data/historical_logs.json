@@ -82,5 +82,11 @@
     "actual": 3.665,
     "forecast_7d": 3.692,
     "fuel_type": "Regular"
+  },
+  {
+    "date": "2026-04-24",
+    "actual": 4.059,
+    "forecast_7d": 4.245,
+    "fuel_type": "Regular"
   }
 ]
