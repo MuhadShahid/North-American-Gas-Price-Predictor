@@ -1,0 +1,86 @@
+[
+  {
+    "date": "2026-04-10",
+    "actual": 3.561,
+    "forecast_7d": 3.504,
+    "fuel_type": "Regular"
+  },
+  {
+    "date": "2026-04-11",
+    "actual": 3.745,
+    "forecast_7d": 3.735,
+    "fuel_type": "Regular"
+  },
+  {
+    "date": "2026-04-12",
+    "actual": 3.552,
+    "forecast_7d": 3.6,
+    "fuel_type": "Regular"
+  },
+  {
+    "date": "2026-04-13",
+    "actual": 3.75,
+    "forecast_7d": 3.803,
+    "fuel_type": "Regular"
+  },
+  {
+    "date": "2026-04-14",
+    "actual": 3.551,
+    "forecast_7d": 3.551,
+    "fuel_type": "Regular"
+  },
+  {
+    "date": "2026-04-15",
+    "actual": 3.747,
+    "forecast_7d": 3.693,
+    "fuel_type": "Regular"
+  },
+  {
+    "date": "2026-04-16",
+    "actual": 3.558,
+    "forecast_7d": 3.51,
+    "fuel_type": "Regular"
+  },
+  {
+    "date": "2026-04-17",
+    "actual": 3.735,
+    "forecast_7d": 3.745,
+    "fuel_type": "Regular"
+  },
+  {
+    "date": "2026-04-18",
+    "actual": 3.573,
+    "forecast_7d": 3.63,
+    "fuel_type": "Regular"
+  },
+  {
+    "date": "2026-04-19",
+    "actual": 3.717,
+    "forecast_7d": 3.759,
+    "fuel_type": "Regular"
+  },
+  {
+    "date": "2026-04-20",
+    "actual": 3.595,
+    "forecast_7d": 3.576,
+    "fuel_type": "Regular"
+  },
+  {
+    "date": "2026-04-21",
+    "actual": 3.692,
+    "forecast_7d": 3.633,
+    "fuel_type": "Regular"
+  },
+  {
+    "date": "2026-04-22",
+    "actual": 3.621,
+    "forecast_7d": 3.586,
+    "fuel_type": "Regular"
+  },
+  {
+    "date": "2026-04-23",
+    "actual": 3.665,
+    "forecast_7d": 3.692,
+    "fuel_type": "Regular"
+  }
+]

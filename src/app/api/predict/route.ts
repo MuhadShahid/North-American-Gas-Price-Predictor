@@ -1,4 +1,6 @@
 import { NextResponse } from 'next/server';
+import fs from 'fs';
+import path from 'path';
 import { GET as getGasPrices } from '../gas-prices/route';
 import * as cheerio from 'cheerio';
 import { GoogleGenAI, Type } from '@google/genai';
@@ -93,41 +95,59 @@ async function getAdvancedSentiment(headlines: Array<{title: string, link: strin
   };
 }
 
-function generateAccuracyLogs(currentBasePrice: number) {
-  const logs = [];
-  let totalErrorPercent = 0;
-  
-  for (let i = 1; i <= 14; i++) {
-    const d = new Date();
-    d.setDate(d.getDate() - i);
-    const dateStr = d.toISOString().split('T')[0];
+function getRealAccuracyLogs() {
+  try {
+    const dataPath = path.join(process.cwd(), 'data/historical_logs.json');
+    if (!fs.existsSync(dataPath)) return { logs: [], averageAccuracy: 'N/A' };
     
-    const pseudoRandom = Math.sin(i * 1234.5); 
-    const actual = currentBasePrice + (pseudoRandom * 0.10);
+    const rawLogs = JSON.parse(fs.readFileSync(dataPath, 'utf8'));
+    rawLogs.sort((a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime());
     
-    const forecastError = (Math.cos(i * 5678.9) * 0.06);
-    const forecast = actual + forecastError;
-    
-    const variance = actual - forecast;
-    const errorPercent = Math.abs(variance / actual);
-    totalErrorPercent += errorPercent;
-    
-    let status = 'WITHIN MARGIN';
-    if (Math.abs(variance) > 0.05) status = variance > 0 ? 'MISS (UNDER)' : 'MISS (OVER)';
-    if (Math.abs(variance) <= 0.02) status = 'DIRECT HIT';
+    const processedLogs = [];
+    let totalErrorPercent = 0;
+    let count = 0;
 
-    logs.push({
-      date: dateStr,
-      actual: parseFloat(actual.toFixed(3)),
-      forecast: parseFloat(forecast.toFixed(3)),
-      variance: parseFloat(variance.toFixed(3)),
-      accuracy: parseFloat(((1 - errorPercent) * 100).toFixed(1)),
-      status
-    });
+    for (let i = 0; i < rawLogs.length; i++) {
+      const currentLog = rawLogs[i];
+      const currentDate = new Date(currentLog.date);
+      
+      const pastDate = new Date(currentDate);
+      pastDate.setDate(pastDate.getDate() - 7);
+      const pastDateStr = pastDate.toISOString().split('T')[0];
+      
+      const forecastLog = rawLogs.find((l: any) => l.date === pastDateStr);
+      
+      if (forecastLog) {
+        const actual = currentLog.actual;
+        const forecast = forecastLog.forecast_7d;
+        
+        const variance = actual - forecast;
+        const errorPercent = Math.abs(variance / actual);
+        totalErrorPercent += errorPercent;
+        count++;
+        
+        let status = 'WITHIN MARGIN';
+        if (Math.abs(variance) > 0.05) status = variance > 0 ? 'MISS (UNDER)' : 'MISS (OVER)';
+        if (Math.abs(variance) <= 0.02) status = 'DIRECT HIT';
+
+        processedLogs.push({
+          date: currentLog.date,
+          actual: parseFloat(actual.toFixed(3)),
+          forecast: parseFloat(forecast.toFixed(3)),
+          variance: parseFloat(variance.toFixed(3)),
+          accuracy: parseFloat(((1 - errorPercent) * 100).toFixed(1)),
+          status
+        });
+      }
+    }
+
+    processedLogs.reverse();
+    const averageAccuracy = count > 0 ? ((1 - (totalErrorPercent / count)) * 100).toFixed(1) : 'N/A';
+    return { logs: processedLogs, averageAccuracy };
+  } catch (err) {
+    console.error('Failed to read real accuracy logs:', err);
+    return { logs: [], averageAccuracy: 'N/A' };
   }
-
-  const averageAccuracy = ((1 - (totalErrorPercent / 14)) * 100).toFixed(1);
-  return { logs, averageAccuracy };
 }
 
 export async function GET() {
@@ -199,7 +219,7 @@ export async function GET() {
       };
     }
 
-    const accuracyTracker = generateAccuracyLogs(parsePrice(gasData['Current Avg.']['Regular']));
+    const accuracyTracker = getRealAccuracyLogs();
 
     return NextResponse.json({
       success: true,
