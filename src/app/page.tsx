@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { Fuel, TrendingUp, TrendingDown, Activity, RefreshCw, Newspaper, AlertTriangle, BrainCircuit } from 'lucide-react';
+import { Activity, Clock } from 'lucide-react';
 import styles from './page.module.css';
 
 export default function Home() {
@@ -10,6 +10,7 @@ export default function Home() {
   const [news, setNews] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [region, setRegion] = useState<'US' | 'CA'>('US');
+  const [lastUpdated, setLastUpdated] = useState<string>('');
 
   useEffect(() => {
     fetch('/api/predict')
@@ -18,6 +19,7 @@ export default function Home() {
         if (res.success) {
           setData(res.predictions);
           setNews(res.newsSentiment);
+          setLastUpdated(new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}));
         }
         setLoading(false);
       })
@@ -30,8 +32,8 @@ export default function Home() {
   if (loading) {
     return (
       <div className={styles.loading}>
-        <RefreshCw size={48} className={styles.spinner} />
-        <h2 className={styles.title}>Loading Real-Time Data...</h2>
+        <Activity size={24} className="text-primary" style={{ animation: 'spin 2s linear infinite' }} />
+        <span className="micro-label">Connecting to Data Feed...</span>
       </div>
     );
   }
@@ -39,8 +41,8 @@ export default function Home() {
   if (!data || !data['Regular']) {
     return (
       <div className={styles.loading}>
-        <h2 className={styles.title} style={{color: 'var(--accent-red)'}}>Failed to load data.</h2>
-        <p>Please check the API connection or try again later.</p>
+        <span className="micro-label text-red">Connection Error</span>
+        <span className="text-muted text-sm">Failed to retrieve upstream pricing data.</span>
       </div>
     );
   }
@@ -57,14 +59,10 @@ export default function Home() {
   ];
 
   // Canadian Conversion Logic (Simulation: CAD per Liter)
-  // US Gallon = 3.785 Liters. USD to CAD = ~1.37
-  // Plus a typical ~20% Canadian gas tax premium
   if (region === 'CA') {
     const convert = (usdPerGal: number) => (usdPerGal * 1.37 / 3.785) * 1.20;
-    
     currentPrice = convert(currentPrice);
     yesterdayPrice = convert(yesterdayPrice);
-    
     chartData = chartData.map(d => ({
       ...d,
       price: d.price ? convert(d.price) : undefined,
@@ -74,199 +72,198 @@ export default function Home() {
 
   const delta = currentPrice - yesterdayPrice;
   const isUp = delta > 0;
+  const nextWeekTarget = chartData.find(d => d.name === 'Next Week')?.predictedPrice || 0;
+  const weeklyDelta = nextWeekTarget - currentPrice;
 
   const unit = region === 'US' ? '/ gal' : '/ L';
-  const currency = region === 'US' ? '$' : 'CA$';
+  const currency = region === 'US' ? '$' : 'C$';
   const displayPrice = (val: number) => `${currency}${val.toFixed(3)}`;
 
   return (
-    <main className={styles.container}>
-      <header className={styles.header}>
-        <h1 className={styles.title}>Gas Price Predictor</h1>
-        <p className={styles.subtitle}>Real-time AI Forecasting based on Live Public Data</p>
+    <main className={styles.dashboard}>
+      
+      {/* 1. TOP COMMAND BAR */}
+      <header className={styles.topBar}>
+        <div className={styles.brand}>
+          <h1 className={styles.appName}>North American Gas Monitor</h1>
+          <span className={styles.statusBadge}>
+            <div className={styles.statusDot}></div> LIVE
+          </span>
+          <span className={styles.timestamp}><Clock size={12} style={{display:'inline', marginRight: 4}}/> {lastUpdated}</span>
+        </div>
         
-        <div className={styles.toggleContainer}>
-          <button 
-            className={`${styles.toggleBtn} ${region === 'US' ? styles.active : ''}`}
-            onClick={() => setRegion('US')}
-          >
-            <span style={{ fontSize: '1.2em' }}>🇺🇸</span> US (USD/gal)
-          </button>
-          <button 
-            className={`${styles.toggleBtn} ${region === 'CA' ? styles.active : ''}`}
-            onClick={() => setRegion('CA')}
-          >
-            <span style={{ fontSize: '1.2em' }}>🇨🇦</span> Canada (CAD/L)
-          </button>
+        <div className={styles.controls}>
+          <div className={styles.segmentedControl}>
+            <button 
+              className={`${styles.segmentBtn} ${region === 'US' ? styles.active : ''}`}
+              onClick={() => setRegion('US')}
+            >
+              US (USD)
+            </button>
+            <button 
+              className={`${styles.segmentBtn} ${region === 'CA' ? styles.active : ''}`}
+              onClick={() => setRegion('CA')}
+            >
+              CA (CAD)
+            </button>
+          </div>
         </div>
       </header>
 
-      <div className={styles.grid}>
-        {/* Current Price Card */}
-        <section className={`glass-panel ${styles.card}`}>
-          <div className={styles.cardHeader}>
-            <h2 className={styles.cardTitle}>
-              <Fuel className={styles.cardIcon} />
-              National Average (Regular)
-            </h2>
-            <div className={`${styles.badge} ${isUp ? styles.badgeUp : styles.badgeDown}`}>
-              {isUp ? <TrendingUp size={14} /> : <TrendingDown size={14} />}
-              {Math.abs(delta).toFixed(3)}
-            </div>
+      {/* 2. KPI STRIP */}
+      <section className={styles.kpiStrip}>
+        <div className={styles.kpiCard}>
+          <span className="micro-label">National Average (Reg)</span>
+          <span className={`font-mono ${styles.kpiValue} text-primary`}>{displayPrice(currentPrice)}</span>
+          <div className={styles.kpiSub}>
+            <span className={`${styles.tag} ${isUp ? styles.tagUp : styles.tagDown}`}>
+              {isUp ? '+' : ''}{delta.toFixed(3)}
+            </span>
+            <span className="text-muted">vs yesterday</span>
           </div>
-          <div className={styles.priceDisplay}>
-            <span className={styles.currentPrice}>{displayPrice(currentPrice)}</span>
-            <span className={styles.unit}>{unit}</span>
-          </div>
-          <p className={styles.subtitle}>
-            Updated Today. Yesterday was {displayPrice(yesterdayPrice)}.
-          </p>
-        </section>
-
-        {/* Prediction Highlight Card */}
-        <section className={`glass-panel ${styles.card}`}>
-          <div className={styles.cardHeader}>
-            <h2 className={styles.cardTitle}>
-              <Activity className={styles.cardIcon} />
-              7-Day Forecast
-            </h2>
-          </div>
-          <div className={styles.priceDisplay}>
-            <span className={styles.currentPrice}>{displayPrice(chartData.find(d => d.name === 'Next Week')?.predictedPrice || 0)}</span>
-            <span className={styles.unit}>{unit}</span>
-          </div>
-          <p className={styles.subtitle}>
-            Predicted price for next week based on short-term momentum and moving averages.
-          </p>
-        </section>
-      </div>
-
-      {/* Chart Section */}
-      <section className="glass-panel">
-        <div className={styles.cardHeader}>
-          <h2 className={styles.cardTitle}>Price Trajectory & Forecast</h2>
         </div>
-        <div className={styles.chartContainer}>
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="var(--surface-border)" />
-              <XAxis dataKey="name" stroke="var(--text-muted)" />
-              <YAxis domain={['auto', 'auto']} stroke="var(--text-muted)" tickFormatter={(val) => displayPrice(val)} />
-              <Tooltip 
-                contentStyle={{ backgroundColor: 'var(--bg-color)', border: '1px solid var(--primary)', borderRadius: '8px' }}
-                itemStyle={{ color: 'var(--text-light)' }}
-                formatter={(value: any) => [displayPrice(Number(value) || 0), 'Price']}
-              />
-              <Line 
-                type="monotone" 
-                dataKey="price" 
-                stroke="var(--primary)" 
-                strokeWidth={3} 
-                dot={{ r: 4, fill: 'var(--bg-color)', strokeWidth: 2 }}
-                activeDot={{ r: 6 }}
-                name="Historical"
-              />
-              <Line 
-                type="monotone" 
-                dataKey="predictedPrice" 
-                stroke="var(--accent-red)" 
-                strokeWidth={3} 
-                strokeDasharray="5 5"
-                dot={{ r: 4, fill: 'var(--bg-color)', strokeWidth: 2 }}
-                activeDot={{ r: 6 }}
-                name="Forecast"
-              />
-            </LineChart>
-          </ResponsiveContainer>
+
+        <div className={styles.kpiCard}>
+          <span className="micro-label">7-Day Forecast Target</span>
+          <span className={`font-mono ${styles.kpiValue} text-light`}>{displayPrice(nextWeekTarget)}</span>
+          <div className={styles.kpiSub}>
+            <span className={`${styles.tag} ${weeklyDelta > 0 ? styles.tagUp : styles.tagDown}`}>
+              {weeklyDelta > 0 ? '+' : ''}{weeklyDelta.toFixed(3)}
+            </span>
+            <span className="text-muted">expected shift</span>
+          </div>
+        </div>
+
+        <div className={styles.kpiCard}>
+          <span className="micro-label">Risk Premium (AI)</span>
+          <span className={`font-mono ${styles.kpiValue} ${news?.riskFactor > 0 ? 'text-red' : 'text-green'}`}>
+            {news?.riskFactor > 0 ? '+' : ''}{displayPrice(news?.riskFactor || 0)}
+          </span>
+          <div className={styles.kpiSub}>
+            <span className={`${styles.tag} ${styles.tagNeutral}`}>NLP Pricing Model</span>
+          </div>
+        </div>
+
+        <div className={styles.kpiCard}>
+          <span className="micro-label">Sentiment Horizon</span>
+          <span className={`font-mono ${styles.kpiValue} text-light`}>{news?.decayTimelineDays || 30} Days</span>
+          <div className={styles.kpiSub}>
+            <span className="text-muted">Estimated time to subside</span>
+          </div>
         </div>
       </section>
 
-      {/* Breakdown Table */}
-      <section className="glass-panel">
-        <div className={styles.cardHeader}>
-          <h2 className={styles.cardTitle}>Data Breakdown</h2>
+      {/* 3. MAIN GRID (Chart + Intel Rail) */}
+      <section className={styles.mainGrid}>
+        
+        {/* Dominant Chart Panel */}
+        <div className={`panel ${styles.panel}`}>
+          <div className={styles.panelHeader}>
+            <span className="micro-label">Price Trajectory & Trailing Averages</span>
+          </div>
+          <div className={styles.chartBody}>
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--surface-border)" strokeOpacity={0.5} vertical={false} />
+                <XAxis dataKey="name" stroke="var(--text-muted)" fontSize={11} tickMargin={10} axisLine={false} tickLine={false} />
+                <YAxis domain={['auto', 'auto']} stroke="var(--text-muted)" fontSize={11} tickFormatter={(val) => val.toFixed(2)} axisLine={false} tickLine={false} width={40} />
+                <Tooltip 
+                  contentStyle={{ backgroundColor: 'var(--surface-color)', border: '1px solid var(--surface-border)', borderRadius: '2px', fontFamily: 'IBM Plex Mono, monospace', fontSize: '0.8rem' }}
+                  itemStyle={{ color: 'var(--text-light)' }}
+                  formatter={(value: any) => [displayPrice(Number(value) || 0), '']}
+                  labelStyle={{ color: 'var(--text-muted)', marginBottom: '4px' }}
+                />
+                <Line 
+                  type="monotone" 
+                  dataKey="price" 
+                  stroke="var(--text-light)" 
+                  strokeWidth={2} 
+                  dot={false}
+                  activeDot={{ r: 4, fill: 'var(--primary)', stroke: 'none' }}
+                  name="Historical"
+                />
+                <Line 
+                  type="monotone" 
+                  dataKey="predictedPrice" 
+                  stroke="var(--text-muted)" 
+                  strokeWidth={2} 
+                  strokeDasharray="4 4"
+                  dot={false}
+                  activeDot={{ r: 4, fill: 'var(--text-light)', stroke: 'none' }}
+                  name="Forecast"
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
         </div>
-        <div style={{ overflowX: 'auto' }}>
-          <table className={styles.table}>
-            <thead>
-              <tr>
-                <th>Timeline</th>
-                <th>Price ({region === 'US' ? 'USD/gal' : 'CAD/L'})</th>
-                <th>Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {chartData.map((d: any, i) => (
-                <tr key={i}>
-                  <td>{d.name}</td>
-                  <td style={{ fontWeight: d.name === 'Current' ? '700' : '400', color: d.isForecast ? 'var(--accent-red)' : 'var(--text-main)' }}>
-                    {displayPrice(d.price || d.predictedPrice)}
-                  </td>
-                  <td>
-                    {d.isForecast ? (
-                      <span className={`${styles.badge} ${styles.badgeUp}`} style={{background: 'rgba(255, 255, 255, 0.1)', color: 'var(--text-muted)', borderColor: 'transparent'}}>
-                        Predicted
-                      </span>
-                    ) : (
-                      <span className={`${styles.badge} ${styles.badgeDown}`} style={{background: 'rgba(255, 75, 75, 0.1)', color: 'var(--primary)', borderColor: 'transparent'}}>
-                        Actual
-                      </span>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </section>
 
-      {/* News & Geopolitics Section */}
-      {news && news.headlines.length > 0 && (
-        <section className="glass-panel">
-          <div className={styles.cardHeader}>
-            <h2 className={styles.cardTitle}>
-              {news.isLLM ? <BrainCircuit className={styles.cardIcon} /> : <Newspaper className={styles.cardIcon} />}
-              Geopolitical News & Market Sentiment
-            </h2>
-            <div style={{ display: 'flex', gap: '0.5rem' }}>
-              {news.isLLM && (
-                <div className={styles.badge} style={{background: 'rgba(255, 75, 75, 0.15)', color: 'var(--primary)', borderColor: 'rgba(255, 75, 75, 0.3)'}}>
-                  AI Powered Analysis
+        {/* Intelligence Rail */}
+        <div className={styles.rail}>
+          {news && news.isLLM && (
+            <div className={`panel ${styles.railPanel}`}>
+              <div className={styles.panelHeader}>
+                <span className="micro-label text-primary">Model Insight</span>
+              </div>
+              <div className={styles.insightBody}>
+                <p className={styles.insightText}>{news.insight}</p>
+                <div className={styles.insightMeta}>
+                  <span className="text-muted">Source: Gemini 2.5 Pro</span>
+                  <span className={news.riskFactor > 0 ? 'text-red' : 'text-green'}>
+                    {news.riskFactor > 0 ? 'BULLISH' : 'BEARISH'} BIAS
+                  </span>
                 </div>
-              )}
-              <div className={`${styles.badge} ${news.riskFactor > 0 ? styles.badgeUp : styles.badgeDown}`}>
-                <AlertTriangle size={14} />
-                Initial Risk Premium: {news.riskFactor > 0 ? '+' : ''}{displayPrice(news.riskFactor)}
               </div>
             </div>
-          </div>
-          
-          <div style={{ marginBottom: '1.5rem', padding: '1rem', background: 'rgba(255,255,255,0.03)', borderRadius: '8px', borderLeft: '4px solid var(--primary)' }}>
-            <h3 style={{ fontSize: '1rem', marginBottom: '0.5rem', color: 'var(--text-light)' }}>AI Market Insight</h3>
-            <p style={{ color: 'var(--text-main)', lineHeight: '1.5' }}>{news.insight}</p>
-            {news.decayTimelineDays && (
-              <p style={{ marginTop: '0.5rem', fontSize: '0.9rem', color: 'var(--text-muted)' }}>
-                <strong>Estimated Time to Subside:</strong> ~{news.decayTimelineDays} days (The premium will linearly decay over this timeframe in our forecast model).
-              </p>
-            )}
-          </div>
+          )}
 
-          <div className={styles.newsList}>
-            {news.headlines.map((item: any, i: number) => (
-              <a key={i} href={item.link} target="_blank" rel="noopener noreferrer" className={styles.newsItem}>
-                <span className={styles.newsTitle}>{item.title}</span>
-                {!news.isLLM && item.impact && (
-                  <div className={styles.newsImpact}>
-                    {item.impact === 'Bullish' && <span className={`${styles.badge} ${styles.badgeUp}`}>🔴 Bullish Price Pressure</span>}
-                    {item.impact === 'Bearish' && <span className={`${styles.badge} ${styles.badgeDown}`}>🟢 Bearish Price Pressure</span>}
-                    {item.impact === 'Neutral' && <span className={styles.badge} style={{background: 'rgba(255,255,255,0.05)'}}>⚪ Neutral</span>}
-                  </div>
-                )}
-              </a>
-            ))}
+          <div className={`panel ${styles.railPanel}`}>
+            <div className={styles.panelHeader}>
+              <span className="micro-label">News Feed</span>
+            </div>
+            <div className={styles.feedList}>
+              {news?.headlines?.map((item: any, i: number) => (
+                <a key={i} href={item.link} target="_blank" rel="noopener noreferrer" className={styles.feedItem}>
+                  <span className={styles.feedTitle}>{item.title}</span>
+                  {!news.isLLM && item.impact && item.impact !== 'Neutral' && (
+                    <span className={`micro-label ${item.impact === 'Bullish' ? 'text-red' : 'text-green'}`}>
+                      [{item.impact}]
+                    </span>
+                  )}
+                </a>
+              ))}
+            </div>
           </div>
-        </section>
-      )}
+        </div>
+      </section>
+
+      {/* 4. LOWER SECTION: DATA TABLE */}
+      <section className={`panel ${styles.tableContainer}`}>
+        <table className={styles.table}>
+          <thead>
+            <tr>
+              <th>Timeline Vector</th>
+              <th className={styles.numCol}>Base Price</th>
+              <th className={styles.numCol}>Adjusted Forecast</th>
+              <th>Data Flag</th>
+            </tr>
+          </thead>
+          <tbody className="font-mono">
+            {chartData.map((d: any, i) => (
+              <tr key={i}>
+                <td className="text-muted">{d.name}</td>
+                <td className={`${styles.numCol} text-light`}>{d.price ? displayPrice(d.price) : '---'}</td>
+                <td className={`${styles.numCol} text-primary`}>{d.predictedPrice ? displayPrice(d.predictedPrice) : '---'}</td>
+                <td>
+                  <span className={`micro-label ${d.isForecast ? 'text-muted' : 'text-light'}`}>
+                    {d.isForecast ? 'MODEL_OUTPUT' : 'AAA_ACTUAL'}
+                  </span>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </section>
+
     </main>
   );
 }
