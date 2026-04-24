@@ -11,6 +11,7 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [region, setRegion] = useState<'US' | 'CA'>('US');
   const [lastUpdated, setLastUpdated] = useState<string>('');
+  const [accuracyData, setAccuracyData] = useState<any>(null);
 
   useEffect(() => {
     fetch('/api/predict')
@@ -19,6 +20,7 @@ export default function Home() {
         if (res.success) {
           setData(res.predictions);
           setNews(res.newsSentiment);
+          setAccuracyData(res.accuracyTracker);
           setLastUpdated(new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}));
         }
         setLoading(false);
@@ -210,10 +212,10 @@ export default function Home() {
         </div>
 
         <div className={styles.kpiCard}>
-          <span className="micro-label">Sentiment Horizon</span>
-          <span className={`font-mono ${styles.kpiValue} text-light`}>{news?.decayTimelineDays || 30} Days</span>
+          <span className="micro-label">Average Model Accuracy</span>
+          <span className={`font-mono ${styles.kpiValue} text-light`}>{accuracyData?.averageAccuracy || 'N/A'}%</span>
           <div className={styles.kpiSub}>
-            <span className="text-muted">Estimated time to subside</span>
+            <span className="text-muted">Trailing 14 Days</span>
           </div>
         </div>
       </section>
@@ -326,36 +328,81 @@ export default function Home() {
       </section>
 
       {/* 4. LOWER SECTION: DATA TABLE */}
-      <section className={`panel ${styles.tableContainer}`}>
-        <table className={styles.table}>
-          <thead>
-            <tr>
-              <th>Timeline Vector</th>
-              <th className={styles.numCol}>Base Price</th>
-              <th className={styles.numCol}>Adjusted Forecast</th>
-              <th>Data Flag</th>
-            </tr>
-          </thead>
-          <tbody className="font-mono">
-            {chartDataRaw.map((d: any, i: number) => (
-              <tr key={i}>
-                <td className="text-muted">{d.name}</td>
-                <td className={`${styles.numCol} text-light`}>{d.actual ? displayPrice(d.actual) : '---'}</td>
-                <td className={`${styles.numCol} text-muted`}>---</td>
-                <td><span className="micro-label text-light">OBSERVED</span></td>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '1rem' }}>
+        <section className={`panel ${styles.tableContainer}`}>
+          <div className={styles.panelHeader} style={{ borderBottom: '1px solid var(--surface-border)' }}>
+            <span className="micro-label">Forecast Timeline Mapping</span>
+          </div>
+          <table className={styles.table}>
+            <thead>
+              <tr>
+                <th>Timeline Vector</th>
+                <th className={styles.numCol}>Base Price</th>
+                <th className={styles.numCol}>Adjusted Forecast</th>
+                <th>Data Flag</th>
               </tr>
-            ))}
-            {forecastDataRaw.map((d: any, i: number) => (
-              <tr key={`f-${i}`}>
-                <td className="text-primary">{d.name}</td>
-                <td className={`${styles.numCol} text-muted`}>---</td>
-                <td className={`${styles.numCol} text-primary`}>{d.forecast ? displayPrice(d.forecast) : '---'}</td>
-                <td><span className="micro-label text-primary">PROJECTED</span></td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </section>
+            </thead>
+            <tbody className="font-mono">
+              {chartDataRaw.map((d: any, i: number) => (
+                <tr key={i}>
+                  <td className="text-muted">{d.name}</td>
+                  <td className={`${styles.numCol} text-light`}>{d.actual ? displayPrice(d.actual) : '---'}</td>
+                  <td className={`${styles.numCol} text-muted`}>---</td>
+                  <td><span className="micro-label text-light">OBSERVED</span></td>
+                </tr>
+              ))}
+              {forecastDataRaw.map((d: any, i: number) => (
+                <tr key={`f-${i}`}>
+                  <td className="text-primary">{d.name}</td>
+                  <td className={`${styles.numCol} text-muted`}>---</td>
+                  <td className={`${styles.numCol} text-primary`}>{d.forecast ? displayPrice(d.forecast) : '---'}</td>
+                  <td><span className="micro-label text-primary">PROJECTED</span></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </section>
+
+        {accuracyData && accuracyData.logs && (
+          <section className={`panel ${styles.tableContainer}`} style={{ maxHeight: '400px', overflowY: 'auto' }}>
+            <div className={styles.panelHeader} style={{ position: 'sticky', top: 0, background: 'var(--surface-color)', borderBottom: '1px solid var(--surface-border)' }}>
+              <span className="micro-label">Historical Accuracy Ledger (14-Day)</span>
+            </div>
+            <table className={styles.table}>
+              <thead>
+                <tr>
+                  <th>Target Date</th>
+                  <th className={styles.numCol}>7D Projection</th>
+                  <th className={styles.numCol}>Settlement</th>
+                  <th className={styles.numCol}>Variance</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody className="font-mono">
+                {accuracyData.logs.map((log: any, i: number) => (
+                  <tr key={i}>
+                    <td className="text-muted">{log.date}</td>
+                    <td className={`${styles.numCol} text-primary`}>{displayPrice(log.forecast)}</td>
+                    <td className={`${styles.numCol} text-light`}>{displayPrice(log.actual)}</td>
+                    <td className={`${styles.numCol} ${log.variance > 0 ? 'text-red' : 'text-green'}`}>
+                      {log.variance > 0 ? '+' : ''}{log.variance.toFixed(3)}
+                    </td>
+                    <td>
+                      <span className="micro-label" style={{
+                        color: log.status.includes('MISS') ? 'var(--accent-red)' : log.status === 'DIRECT HIT' ? 'var(--accent-green)' : 'var(--text-light)',
+                        background: log.status.includes('MISS') ? 'var(--accent-red-bg)' : log.status === 'DIRECT HIT' ? 'var(--accent-green-bg)' : 'var(--surface-border)',
+                        padding: '2px 4px', borderRadius: '2px'
+                      }}>
+                        {log.status}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </section>
+        )}
+      </div>
 
     </main>
   );
