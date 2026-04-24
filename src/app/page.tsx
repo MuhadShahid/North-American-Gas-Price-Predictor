@@ -337,7 +337,7 @@ export default function Home() {
             </tr>
           </thead>
           <tbody className="font-mono">
-            {chartDataRaw.map((d: any, i) => (
+            {chartDataRaw.map((d: any, i: number) => (
               <tr key={i}>
                 <td className="text-muted">{d.name}</td>
                 <td className={`${styles.numCol} text-light`}>{d.actual ? displayPrice(d.actual) : '---'}</td>
@@ -345,7 +345,7 @@ export default function Home() {
                 <td><span className="micro-label text-light">OBSERVED</span></td>
               </tr>
             ))}
-            {forecastDataRaw.map((d: any, i) => (
+            {forecastDataRaw.map((d: any, i: number) => (
               <tr key={`f-${i}`}>
                 <td className="text-primary">{d.name}</td>
                 <td className={`${styles.numCol} text-muted`}>---</td>
