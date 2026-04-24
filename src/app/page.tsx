@@ -155,7 +155,7 @@ export default function Home() {
               <Tooltip 
                 contentStyle={{ backgroundColor: 'var(--bg-color)', border: '1px solid var(--primary)', borderRadius: '8px' }}
                 itemStyle={{ color: 'var(--text-light)' }}
-                formatter={(value: number) => [displayPrice(value), 'Price']}
+                formatter={(value: any) => [displayPrice(Number(value) || 0), 'Price']}
               />
               <Line 
                 type="monotone" 
