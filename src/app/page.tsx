@@ -90,13 +90,13 @@ export default function Home() {
             className={`${styles.toggleBtn} ${region === 'US' ? styles.active : ''}`}
             onClick={() => setRegion('US')}
           >
-            US (USD/gal)
+            <span style={{ fontSize: '1.2em' }}>🇺🇸</span> US (USD/gal)
           </button>
           <button 
             className={`${styles.toggleBtn} ${region === 'CA' ? styles.active : ''}`}
             onClick={() => setRegion('CA')}
           >
-            Canada (CAD/L)
+            <span style={{ fontSize: '1.2em' }}>🇨🇦</span> Canada (CAD/L)
           </button>
         </div>
       </header>
@@ -208,7 +208,7 @@ export default function Home() {
                         Predicted
                       </span>
                     ) : (
-                      <span className={`${styles.badge} ${styles.badgeDown}`} style={{background: 'rgba(102, 252, 241, 0.1)', color: 'var(--primary)', borderColor: 'transparent'}}>
+                      <span className={`${styles.badge} ${styles.badgeDown}`} style={{background: 'rgba(255, 75, 75, 0.1)', color: 'var(--primary)', borderColor: 'transparent'}}>
                         Actual
                       </span>
                     )}
@@ -230,7 +230,7 @@ export default function Home() {
             </h2>
             <div style={{ display: 'flex', gap: '0.5rem' }}>
               {news.isLLM && (
-                <div className={styles.badge} style={{background: 'rgba(102, 252, 241, 0.15)', color: 'var(--primary)', borderColor: 'rgba(102, 252, 241, 0.3)'}}>
+                <div className={styles.badge} style={{background: 'rgba(255, 75, 75, 0.15)', color: 'var(--primary)', borderColor: 'rgba(255, 75, 75, 0.3)'}}>
                   AI Powered Analysis
                 </div>
               )}

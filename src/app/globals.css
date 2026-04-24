@@ -1,23 +1,23 @@
 @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Inter:wght@400;500;600&display=swap');
 
 :root {
-  --bg-color: #0b0c10;
-  --bg-gradient: linear-gradient(135deg, #0b0c10 0%, #1f2833 100%);
-  --surface-color: rgba(31, 40, 51, 0.4);
-  --surface-border: rgba(102, 252, 241, 0.15);
+  --bg-color: #0E1117;
+  --bg-gradient: none;
+  --surface-color: #262730;
+  --surface-border: rgba(250, 250, 250, 0.1);
   
-  --primary: #66fcf1;
-  --primary-hover: #45a29e;
-  --text-main: #c5c6c7;
-  --text-light: #ffffff;
-  --text-muted: #8b8f94;
+  --primary: #FF4B4B;
+  --primary-hover: #FF6666;
+  --text-main: #FAFAFA;
+  --text-light: #FFFFFF;
+  --text-muted: #A0A4B8;
 
-  --accent-red: #ff4b4b;
-  --accent-green: #00ff88;
+  --accent-red: #FF4B4B;
+  --accent-green: #00CC96;
 
-  --glass-blur: blur(12px);
-  --shadow-glow: 0 4px 30px rgba(102, 252, 241, 0.1);
-  --transition: all 0.3s ease;
+  --glass-blur: none;
+  --shadow-glow: none;
+  --transition: all 0.2s ease;
 }
 
 * {
@@ -53,6 +53,5 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .glass-panel:hover {
-  border-color: rgba(102, 252, 241, 0.3);
-  transform: translateY(-2px);
+  border-color: rgba(255, 75, 75, 0.5);
 }
