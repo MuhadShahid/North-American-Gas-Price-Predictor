@@ -374,6 +374,7 @@ export default function Home() {
                   <th>Target Date</th>
                   <th className={styles.numCol}>7D Projection</th>
                   <th className={styles.numCol}>Settlement</th>
+                  <th className={styles.numCol}>Accuracy</th>
                   <th className={styles.numCol}>Variance</th>
                   <th>Status</th>
                 </tr>
@@ -384,6 +385,7 @@ export default function Home() {
                     <td className="text-muted">{log.date}</td>
                     <td className={`${styles.numCol} text-primary`}>{displayPrice(log.forecast)}</td>
                     <td className={`${styles.numCol} text-light`}>{displayPrice(log.actual)}</td>
+                    <td className={`${styles.numCol} text-light`}>{log.accuracy}%</td>
                     <td className={`${styles.numCol} ${log.variance > 0 ? 'text-red' : 'text-green'}`}>
                       {log.variance > 0 ? '+' : ''}{log.variance.toFixed(3)}
                     </td>
