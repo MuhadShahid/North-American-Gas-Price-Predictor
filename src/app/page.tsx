@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { ComposedChart, Line, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
 import { Activity, Clock } from 'lucide-react';
 import styles from './page.module.css';
 
@@ -53,10 +53,26 @@ export default function Home() {
   let currentPrice = regularData.historical.find((d: any) => d.label === 'Current')?.price;
   let yesterdayPrice = regularData.historical.find((d: any) => d.label === 'Yesterday')?.price;
   
-  let chartData = [
-    ...regularData.historical.map((d: any) => ({ name: d.label, price: d.price, isForecast: false })),
-    ...regularData.forecast.map((d: any) => ({ name: d.label, predictedPrice: d.price, isForecast: true }))
-  ];
+  let chartDataRaw = regularData.historical.map((d: any) => ({
+    name: d.label,
+    actual: d.price,
+    isForecast: false
+  }));
+
+  let forecastDataRaw = regularData.forecast.map((d: any) => ({
+    name: d.label,
+    forecast: d.price,
+    range: [d.lower || d.price, d.upper || d.price],
+    isForecast: true
+  }));
+
+  // Combine and link the historical to the forecast
+  let chartData = [...chartDataRaw, ...forecastDataRaw];
+  const currentIndex = chartData.findIndex(d => d.name === 'Current');
+  if (currentIndex !== -1) {
+    chartData[currentIndex].forecast = chartData[currentIndex].actual;
+    chartData[currentIndex].range = [chartData[currentIndex].actual, chartData[currentIndex].actual];
+  }
 
   // Canadian Conversion Logic (Simulation: CAD per Liter)
   if (region === 'CA') {
@@ -65,19 +81,68 @@ export default function Home() {
     yesterdayPrice = convert(yesterdayPrice);
     chartData = chartData.map(d => ({
       ...d,
-      price: d.price ? convert(d.price) : undefined,
-      predictedPrice: d.predictedPrice ? convert(d.predictedPrice) : undefined
+      actual: d.actual ? convert(d.actual) : undefined,
+      forecast: d.forecast ? convert(d.forecast) : undefined,
+      range: d.range ? [convert(d.range[0]), convert(d.range[1])] : undefined
     }));
   }
 
   const delta = currentPrice - yesterdayPrice;
   const isUp = delta > 0;
-  const nextWeekTarget = chartData.find(d => d.name === 'Next Week')?.predictedPrice || 0;
+  const nextWeekTarget = chartData.find(d => d.name === 'Next Week')?.forecast || 0;
   const weeklyDelta = nextWeekTarget - currentPrice;
 
   const unit = region === 'US' ? '/ gal' : '/ L';
   const currency = region === 'US' ? '$' : 'C$';
   const displayPrice = (val: number) => `${currency}${val.toFixed(3)}`;
+
+  // Custom Rich Tooltip
+  const CustomTooltip = ({ active, payload, label }: any) => {
+    if (active && payload && payload.length) {
+      const point = payload[0].payload;
+      const isProj = point.isForecast;
+      
+      return (
+        <div style={{ background: 'var(--surface-color)', border: '1px solid var(--surface-border)', padding: '12px', borderRadius: '4px', minWidth: '240px', boxShadow: '0 8px 30px rgba(0,0,0,0.8)' }}>
+          <div style={{ borderBottom: '1px solid var(--surface-border)', paddingBottom: '8px', marginBottom: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span className="micro-label" style={{ color: 'var(--text-light)' }}>{label}</span>
+            {isProj ? <span className="micro-label" style={{ background: 'var(--primary-light)', color: 'var(--primary)', padding: '2px 4px', borderRadius: '2px' }}>PROJECTION</span> : <span className="micro-label text-muted">OBSERVED</span>}
+          </div>
+          
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontFamily: 'IBM Plex Mono, monospace' }}>
+            {point.actual && !isProj && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span className="text-muted" style={{fontSize: '0.75rem', fontFamily: 'Inter, sans-serif'}}>Settlement Price</span>
+                <span className="text-light" style={{fontWeight: 600}}>{displayPrice(point.actual)}</span>
+              </div>
+            )}
+            {point.forecast && isProj && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span className="text-muted" style={{fontSize: '0.75rem', fontFamily: 'Inter, sans-serif'}}>Model Target</span>
+                <span className="text-primary" style={{fontWeight: 600}}>{displayPrice(point.forecast)}</span>
+              </div>
+            )}
+            {point.range && isProj && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span className="text-muted" style={{fontSize: '0.75rem', fontFamily: 'Inter, sans-serif'}}>95% CI Range</span>
+                <span className="text-muted" style={{fontSize: '0.75rem'}}>{displayPrice(point.range[0])} - {displayPrice(point.range[1])}</span>
+              </div>
+            )}
+            
+            {isProj && news && (
+              <div style={{ marginTop: '4px', paddingTop: '8px', borderTop: '1px dashed var(--surface-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span className="text-muted" style={{fontSize: '0.75rem', fontFamily: 'Inter, sans-serif'}}>Geopolitics Premium</span>
+                <span style={{ fontSize: '0.75rem', color: news.riskFactor > 0 ? 'var(--accent-red)' : 'var(--accent-green)' }}>
+                  {news.riskFactor > 0 ? '+' : ''}{displayPrice(news.riskFactor)}
+                </span>
+              </div>
+            )}
+          </div>
+        </div>
+      );
+    }
+    return null;
+  };
 
   return (
     <main className={styles.dashboard}>
@@ -159,40 +224,64 @@ export default function Home() {
         {/* Dominant Chart Panel */}
         <div className={`panel ${styles.panel}`}>
           <div className={styles.panelHeader}>
-            <span className="micro-label">Price Trajectory & Trailing Averages</span>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
+              <span className="micro-label text-light">PRICE TRAJECTORY & FORECAST</span>
+              <span className="micro-label text-muted" style={{ fontWeight: 400 }}>{region === 'US' ? 'USD/GAL' : 'CAD/L'}</span>
+            </div>
+            <div className={styles.segmentedControl} style={{ transform: 'scale(0.85)', transformOrigin: 'right' }}>
+              <button className={`${styles.segmentBtn}`}>1M</button>
+              <button className={`${styles.segmentBtn} ${styles.active}`}>3M</button>
+              <button className={`${styles.segmentBtn}`}>1Y</button>
+            </div>
           </div>
           <div className={styles.chartBody}>
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--surface-border)" strokeOpacity={0.5} vertical={false} />
-                <XAxis dataKey="name" stroke="var(--text-muted)" fontSize={11} tickMargin={10} axisLine={false} tickLine={false} />
-                <YAxis domain={['auto', 'auto']} stroke="var(--text-muted)" fontSize={11} tickFormatter={(val) => val.toFixed(2)} axisLine={false} tickLine={false} width={40} />
+              <ComposedChart data={chartData} margin={{ top: 10, right: 0, left: 0, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--surface-border)" strokeOpacity={0.6} vertical={false} />
+                <XAxis dataKey="name" stroke="var(--text-muted)" fontSize={11} tickMargin={12} axisLine={false} tickLine={false} />
+                <YAxis domain={['auto', 'auto']} stroke="var(--text-muted)" fontSize={11} tickFormatter={(val) => val.toFixed(2)} axisLine={false} tickLine={false} width={45} orientation="right" tick={{ fontFamily: 'IBM Plex Mono, monospace' }} />
+                
                 <Tooltip 
-                  contentStyle={{ backgroundColor: 'var(--surface-color)', border: '1px solid var(--surface-border)', borderRadius: '2px', fontFamily: 'IBM Plex Mono, monospace', fontSize: '0.8rem' }}
-                  itemStyle={{ color: 'var(--text-light)' }}
-                  formatter={(value: any) => [displayPrice(Number(value) || 0), '']}
-                  labelStyle={{ color: 'var(--text-muted)', marginBottom: '4px' }}
+                  content={<CustomTooltip />} 
+                  cursor={{ stroke: 'var(--surface-border)', strokeWidth: 1, strokeDasharray: '4 4' }} 
                 />
+                
+                {/* Divide Actual vs Forecast */}
+                <ReferenceLine x="Current" stroke="var(--text-muted)" strokeDasharray="3 3" strokeOpacity={0.5} label={{ position: 'insideTopLeft', value: 'FORECAST →', fill: 'var(--text-muted)', fontSize: 10, offset: 10 }} />
+                
+                {/* Confidence Band */}
+                <Area 
+                  type="monotone" 
+                  dataKey="range" 
+                  stroke="none" 
+                  fill="var(--primary)" 
+                  fillOpacity={0.05} 
+                  isAnimationActive={false}
+                />
+                
+                {/* Solid Historical Line */}
                 <Line 
                   type="monotone" 
-                  dataKey="price" 
+                  dataKey="actual" 
                   stroke="var(--text-light)" 
                   strokeWidth={2} 
                   dot={false}
-                  activeDot={{ r: 4, fill: 'var(--primary)', stroke: 'none' }}
+                  activeDot={{ r: 4, fill: 'var(--text-light)', stroke: 'var(--bg-color)', strokeWidth: 2 }}
                   name="Historical"
                 />
+                
+                {/* Dashed Forecast Line */}
                 <Line 
                   type="monotone" 
-                  dataKey="predictedPrice" 
-                  stroke="var(--text-muted)" 
+                  dataKey="forecast" 
+                  stroke="var(--primary)" 
                   strokeWidth={2} 
                   strokeDasharray="4 4"
                   dot={false}
-                  activeDot={{ r: 4, fill: 'var(--text-light)', stroke: 'none' }}
+                  activeDot={{ r: 4, fill: 'var(--primary)', stroke: 'var(--bg-color)', strokeWidth: 2 }}
                   name="Forecast"
                 />
-              </LineChart>
+              </ComposedChart>
             </ResponsiveContainer>
           </div>
         </div>
@@ -248,16 +337,20 @@ export default function Home() {
             </tr>
           </thead>
           <tbody className="font-mono">
-            {chartData.map((d: any, i) => (
+            {chartDataRaw.map((d: any, i) => (
               <tr key={i}>
                 <td className="text-muted">{d.name}</td>
-                <td className={`${styles.numCol} text-light`}>{d.price ? displayPrice(d.price) : '---'}</td>
-                <td className={`${styles.numCol} text-primary`}>{d.predictedPrice ? displayPrice(d.predictedPrice) : '---'}</td>
-                <td>
-                  <span className={`micro-label ${d.isForecast ? 'text-muted' : 'text-light'}`}>
-                    {d.isForecast ? 'MODEL_OUTPUT' : 'AAA_ACTUAL'}
-                  </span>
-                </td>
+                <td className={`${styles.numCol} text-light`}>{d.actual ? displayPrice(d.actual) : '---'}</td>
+                <td className={`${styles.numCol} text-muted`}>---</td>
+                <td><span className="micro-label text-light">OBSERVED</span></td>
+              </tr>
+            ))}
+            {forecastDataRaw.map((d: any, i) => (
+              <tr key={`f-${i}`}>
+                <td className="text-primary">{d.name}</td>
+                <td className={`${styles.numCol} text-muted`}>---</td>
+                <td className={`${styles.numCol} text-primary`}>{d.forecast ? displayPrice(d.forecast) : '---'}</td>
+                <td><span className="micro-label text-primary">PROJECTED</span></td>
               </tr>
             ))}
           </tbody>

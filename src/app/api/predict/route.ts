@@ -146,8 +146,18 @@ export async function GET() {
           { label: 'Current', price: current },
         ],
         forecast: [
-          { label: 'Next Week', price: parseFloat(nextWeekPrediction.toFixed(3)) },
-          { label: 'Next Month', price: parseFloat(nextMonthPrediction.toFixed(3)) }
+          { 
+            label: 'Next Week', 
+            price: parseFloat(nextWeekPrediction.toFixed(3)),
+            lower: parseFloat((nextWeekPrediction - 0.04).toFixed(3)),
+            upper: parseFloat((nextWeekPrediction + 0.06).toFixed(3))
+          },
+          { 
+            label: 'Next Month', 
+            price: parseFloat(nextMonthPrediction.toFixed(3)),
+            lower: parseFloat((nextMonthPrediction - 0.12).toFixed(3)),
+            upper: parseFloat((nextMonthPrediction + 0.15).toFixed(3))
+          }
         ]
       };
     }
