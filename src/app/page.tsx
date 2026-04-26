@@ -75,6 +75,8 @@ export default function Home() {
     chartData[currentIndex].forecast = chartData[currentIndex].actual;
     chartData[currentIndex].range = [chartData[currentIndex].actual, chartData[currentIndex].actual];
   }
+  
+  let convertedAccuracyLogs = accuracyData?.logs || [];
 
   // Canadian Conversion Logic (Simulation: CAD per Liter)
   if (region === 'CA') {
@@ -86,6 +88,20 @@ export default function Home() {
       actual: d.actual ? convert(d.actual) : undefined,
       forecast: d.forecast ? convert(d.forecast) : undefined,
       range: d.range ? [convert(d.range[0]), convert(d.range[1])] : undefined
+    }));
+    chartDataRaw = chartDataRaw.map((d: any) => ({
+      ...d,
+      actual: d.actual ? convert(d.actual) : undefined
+    }));
+    forecastDataRaw = forecastDataRaw.map((d: any) => ({
+      ...d,
+      forecast: d.forecast ? convert(d.forecast) : undefined
+    }));
+    convertedAccuracyLogs = convertedAccuracyLogs.map((log: any) => ({
+      ...log,
+      actual: convert(log.actual),
+      forecast: convert(log.forecast),
+      variance: convert(log.variance)
     }));
   }
 
@@ -380,7 +396,7 @@ export default function Home() {
                 </tr>
               </thead>
               <tbody className="font-mono">
-                {accuracyData.logs.map((log: any, i: number) => (
+                {convertedAccuracyLogs.map((log: any, i: number) => (
                   <tr key={i}>
                     <td className="text-muted">{log.date}</td>
                     <td className={`${styles.numCol} text-primary`}>{displayPrice(log.forecast)}</td>
