@@ -1,11 +1,5 @@
 [
   {
-    "date": "2026-05-02",
-    "actual": 4.433,
-    "forecast_7d": 4.894,
-    "fuel_type": "Regular"
-  },
-  {
     "date": "2026-05-03",
     "actual": 4.446,
     "forecast_7d": 4.907,
@@ -537,6 +531,12 @@
     "date": "2026-08-02",
     "actual": 4.096,
     "forecast_7d": 4.29,
+    "fuel_type": "Regular"
+  },
+  {
+    "date": "2026-08-03",
+    "actual": 4.095,
+    "forecast_7d": 4.149,
     "fuel_type": "Regular"
   }
 ]
